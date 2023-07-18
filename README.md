@@ -1,4 +1,4 @@
-This repository contains the source files for all my customized QMK keymaps.
+This repository contains the source files for all my customized QMK keymaps for all my custom keyboard projects.
 
 ## List of keyboards which this repository has custom keymaps for:
 
@@ -6,4 +6,5 @@ This repository contains the source files for all my customized QMK keymaps.
 - [GMMK Pro ANSI](https://github.com/Polygonalr/qmk-firmwares/tree/master/gmmk-pro)
 - [KBD67 Lite R1](https://github.com/Polygonalr/qmk-firmwares/tree/master/kbd67lite)
 - Tiger80 (To be added)
+- [Ikki68 Aurora](https://github.com/Polygonalr/qmk-firmwares/tree/master/ikki68_aurora)
 
