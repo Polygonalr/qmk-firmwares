@@ -16,7 +16,7 @@
 
 #include QMK_KEYBOARD_H
 
-#define SOCD_OVERLAP_DELAY 15
+#define SOCD_OVERLAP_DELAY 16
 #define OVERLAPS_BEFORE_DELAY 2
 
 enum custom_keycodes {
@@ -84,24 +84,21 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 };
 
 void matrix_scan_user(void) {
-    if (a_down && d_down && (
-        timer_elapsed32(socd_timer) > SOCD_OVERLAP_DELAY || overlap_count <= OVERLAPS_BEFORE_DELAY
-    )) {
-        switch (last_pressed) {
-            case A_LAST_PRESSED:
-                unregister_code(KC_D);
-                break;
-            case D_LAST_PRESSED:
-                unregister_code(KC_A);
-                break;
-            case NONE_LAST_PRESSED:
-                break;
+    if (last_pressed == NONE_LAST_PRESSED) {
+        return;
+    }
+
+    if (a_down && d_down && 
+        (overlap_count <= OVERLAPS_BEFORE_DELAY || timer_elapsed32(socd_timer) > SOCD_OVERLAP_DELAY)
+    ) {
+        if (last_pressed == A_LAST_PRESSED) {
+            unregister_code(KC_D);
+        } else {
+            unregister_code(KC_A);
         }
         socd_timer = timer_read32(); // reset timer
-        overlap_count++;
-    }
-    if (overlap_count >= OVERLAPS_BEFORE_DELAY) {
-        overlap_count = 0;
+        overlap_count = (overlap_count + 1) % (OVERLAPS_BEFORE_DELAY + 1)
+        last_pressed = NONE_LAST_PRESSED; // ensure this block of code will not be executed until A/D is released & held again
     }
 }
 
