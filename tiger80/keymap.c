@@ -17,7 +17,8 @@
 #include QMK_KEYBOARD_H
 
 #define SOCD_OVERLAP_DELAY 16
-#define OVERLAPS_BEFORE_DELAY 2
+#define OVERLAPS_BEFORE_DELAY 1
+#define RAPIDFIRE_INTERVAL 50 // 20 clicks per second
 
 enum custom_keycodes {
     SOCD_A = SAFE_RANGE,
@@ -33,7 +34,9 @@ enum last_socd_pressed {
 
 bool a_down = false;
 bool d_down = false;
+bool rapidfire = false;
 uint32_t socd_timer = 0;
+uint32_t rapidfire_timer = 0;
 uint32_t last_pressed = NONE_LAST_PRESSED;
 uint8_t overlap_count = 0;
 
@@ -83,13 +86,19 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     )
 };
 
+// Called every clock cycle of the keyboard
 void matrix_scan_user(void) {
+    if (rapidfire && timer_elapsed32(rapidfire_timer) >= RAPIDFIRE_INTERVAL) {
+        tap_code(KC_MS_BTN1);
+        rapidfire_timer = timer_read32();
+    }
+
     if (last_pressed == NONE_LAST_PRESSED) {
         return;
     }
 
     if (a_down && d_down && 
-        (overlap_count <= OVERLAPS_BEFORE_DELAY || timer_elapsed32(socd_timer) > SOCD_OVERLAP_DELAY)
+        (overlap_count >= OVERLAPS_BEFORE_DELAY || timer_elapsed32(socd_timer) > SOCD_OVERLAP_DELAY)
     ) {
         if (last_pressed == A_LAST_PRESSED) {
             unregister_code(KC_D);
@@ -97,11 +106,12 @@ void matrix_scan_user(void) {
             unregister_code(KC_A);
         }
         socd_timer = timer_read32(); // reset timer
-        overlap_count = (overlap_count + 1) % (OVERLAPS_BEFORE_DELAY + 1)
+        overlap_count = (overlap_count + 1) % (OVERLAPS_BEFORE_DELAY + 1);
         last_pressed = NONE_LAST_PRESSED; // ensure this block of code will not be executed until A/D is released & held again
     }
 }
 
+// Event responder when key is pressed/released
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
         case SOCD_A:
@@ -138,6 +148,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             return false;
+        case RAPIDF:
+            if (record->event.pressed) {
+                rapidfire = !rapidfire;
+                rapidfire_timer = timer_read32();
+            }
+            break;
     }
     return true;
 }
