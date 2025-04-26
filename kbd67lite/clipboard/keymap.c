@@ -1,6 +1,7 @@
 #include QMK_KEYBOARD_H
 #define CLIPBOARD_SIZE 512
 #define DELAY_BETWEEN_CHARS 2
+#define RAPIDFIRE_INTERVAL 50 // 20 clicks per second
 
 typedef struct {
   bool is_press_action;
@@ -23,12 +24,15 @@ enum {
 enum dumb_keycodes {
   TAUNTTXT = SAFE_RANGE,
   YANK_V,
+  RAPIDF,
 };
 
 bool tAuNtTeXt = false;
 char clipboard[CLIPBOARD_SIZE] = {0};
 uint16_t clipboard_idx = 0;
 bool clipboard_read_until_null = false;
+bool rapidfire = false;
+uint32_t rapidfire_timer = 0;
 
 int cur_dance (tap_dance_state_t *state);
 void alt_finished (tap_dance_state_t *state, void *user_data);
@@ -44,11 +48,17 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 		[1] = LAYOUT_65_ansi_blocker( 
 			KC_GRV,   KC_F1,    KC_F2,   KC_F3,  KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,   KC_F11,  KC_F12,  KC_DEL,   KC_INS,
 		    KC_TRNS,  RGB_TOG,  RGB_MOD, RGB_HUI,RGB_HUD, RGB_SAI, RGB_SAD, RGB_VAI, RGB_VAD, KC_TRNS, KC_PSCR, KC_SCRL,  KC_PAUS, QK_BOOT,  KC_PGUP,
-			TAUNTTXT, RGB_SPI,  RGB_SPD, KC_TRNS,KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,  KC_TRNS,          EE_CLR,   KC_PGDN,
+			TAUNTTXT, RGB_SPI,  RGB_SPD, KC_TRNS,KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,  RAPIDF,          EE_CLR,   KC_PGDN,
 		    KC_LSFT,  KC_TRNS,  KC_TRNS, KC_F21, YANK_V,  KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,  KC_TRNS,          KC_VOLU,  KC_MUTE,
 		    KC_TRNS,  KC_TRNS,  TD(ALT_OSL1),             KC_TRNS,                   KC_TRNS,          KC_TRNS,  KC_MPRV,          KC_VOLD,  KC_MNXT),
 };
 
+void matrix_scan_user(void) {
+  if (rapidfire && timer_elapsed32(rapidfire_timer) >= RAPIDFIRE_INTERVAL) {
+    tap_code(KC_MS_BTN1);
+    rapidfire_timer = timer_read32();
+  }
+}
 
 int cur_dance (tap_dance_state_t *state) {
   if (state->count == 1) {
@@ -143,9 +153,15 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     case YANK_V:
       // test code
       if (record->event.pressed) {
-        send_string_with_delay(clipboard, DELAY_BETWEEN_CHARS);
+        send_string(clipboard);
       }
       return false;
+    case RAPIDF:
+      if (record->event.pressed) {
+          rapidfire = !rapidfire;
+          rapidfire_timer = timer_read32();
+      }
+      return true;
 
     default:
       return true; //Process all other keycodes normally
